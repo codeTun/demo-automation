@@ -1,9 +1,35 @@
-# K8sFleetmanWebappAngular
+# Fleetman on Kubernetes
 
-This is an experimental project to port the front end to Angular.
+Lab project for the PaaS workshop at iTeam University. Fleetman is a demo application that
+tracks a fleet of delivery vehicles on a map. It is made of five microservices. This
+repository holds their source code, one Dockerfile per microservice, the Kubernetes
+manifests and the Jenkins pipeline that builds and deploys all of them.
 
-It's temporarily on hold, as some very minor problems got in the way. For example, the Moving Marker that we rely on doesn't have any native integration with Angular and it would take us too long to unpick how to do it. 
+| Folder | Microservice | Technology |
+|---|---|---|
+| `webapp/` | Web interface showing the vehicles on a map | Angular 19, served by nginx |
+| `api-gateway/` | Single entry point used by the web interface | Java 17, Spring Boot |
+| `position-tracker/` | Reads the positions from the queue and keeps them | Java 17, Spring Boot |
+| `position-simulator/` | Generates the vehicle positions | Java 17, Spring Boot |
+| `queue/` | Message queue between the simulator and the tracker | ActiveMQ |
+| `manifests/` | One Kubernetes file per microservice (Deployment and Service) | YAML |
 
-For now, we'll stick with SpringBoot (MVC) on the front end.
+## Pipeline
 
-Edit by iheb elazheri
+The `Jenkinsfile` runs five stages:
+
+1. **Preparation**: fetches the code and computes one image tag per microservice.
+2. **Image Build**: builds the five Docker images. Java and Angular are compiled inside
+   Docker, so Jenkins needs neither Maven nor Node.
+3. **Image Push**: publishes the images on Docker Hub.
+4. **Deploy**: applies the manifests and waits until every Deployment is ready.
+5. **Smoke Test**: calls the API gateway and the web interface to check that the
+   application really answers.
+
+An image is tagged with the short hash of the last commit that changed the folder of its
+microservice. A microservice that did not change keeps its tag and is not restarted.
+
+## Origin of the application
+
+The source code of the microservices comes from Richard Chesterwood's Kubernetes course,
+release 2: <https://github.com/DickChesterwood/k8s-fleetman>.

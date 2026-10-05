@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: position-simulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: position-simulator
+  template:
+    metadata:
+      labels:
+        app: position-simulator
+    spec:
+      containers:
+      - name: position-simulator
+        # The pipeline replaces this line with the image tagged by the commit.
+        image: iheb770/fleetman-position-simulator:latest
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: production-microservice
