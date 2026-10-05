@@ -18,6 +18,23 @@ pipeline {
             }
         }
 
+        stage('Code Quality') {
+            steps {
+                echo 'Analysing position-simulator with SonarQube'
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_TOKEN')]) {
+                    // Maven runs in a container, on a copy of the sources, and sends the report to SonarQube on this machine.
+                    sh '''
+                        docker run --rm --network host \
+                            -e SONAR_HOST_URL=http://localhost:9000 -e SONAR_TOKEN \
+                            -v "$PWD/position-simulator":/src:ro \
+                            -v fleetman-maven-cache:/root/.m2 \
+                            maven:3.9-eclipse-temurin-17 \
+                            sh -c 'cp -r /src /work && cd /work && mvn -B -ntp -DskipTests verify org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar -Dsonar.projectKey=fleetman-position-simulator -Dsonar.projectName=fleetman-position-simulator'
+                    '''
+                }
+            }
+        }
+
         stage('Image Build') {
             steps {
                 echo 'Building...'
