@@ -77,12 +77,14 @@ pipeline {
                 echo 'Checking that the application really answers'
                 sh '''
                     NODE_IP=$(hostname -I | cut -d" " -f1)
-                    CURL="curl --fail --silent --show-error --retry 20 --retry-delay 3 --retry-connrefused"
-                    $CURL http://$NODE_IP:30020/ > gateway.html
+                    # Right after a rollout a request can still be sent to a pod that was just removed:
+                    # give up on it after 5 seconds and try again, whatever the error.
+                    CURL="curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --retry 20 --retry-delay 3 --retry-all-errors"
+                    $CURL --output gateway.html http://$NODE_IP:30020/
                     grep -q "Fleetman API Gateway" gateway.html
-                    $CURL http://$NODE_IP:30080/ > page.html
+                    $CURL --output page.html http://$NODE_IP:30080/
                     grep -q "<script" page.html
-                    $CURL http://$NODE_IP:30080/api/vehicles/ > vehicles.json
+                    $CURL --output vehicles.json http://$NODE_IP:30080/api/vehicles/
                     echo "Fleetman is up on http://$NODE_IP:30080/"
                 '''
             }
