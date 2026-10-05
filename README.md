@@ -12,11 +12,15 @@ manifests and the Jenkins pipeline that builds and deploys all of them.
 | `position-tracker/` | Reads the positions from the queue and keeps them | Java 17, Spring Boot |
 | `position-simulator/` | Generates the vehicle positions | Java 17, Spring Boot |
 | `queue/` | Message queue between the simulator and the tracker | ActiveMQ |
-| `manifests/` | One Kubernetes file per microservice (Deployment and Service) | YAML |
+| `manifests/` | One Kubernetes file per microservice (Deployment and Service), plus `mongodb.yaml` | YAML |
+
+`manifests/mongodb.yaml` deploys a MongoDB database with a persistent volume (a folder on
+`worker01`) behind the Service `fleetman-mongodb`. The position tracker of release 2 keeps
+the positions in memory and does not write to it. Release 3 of the course does.
 
 ## Pipeline
 
-The `Jenkinsfile` runs five stages:
+The `Jenkinsfile` runs six stages:
 
 1. **Preparation**: fetches the code and computes one image tag per microservice.
 2. **Code Quality**: analyses the code of `position-simulator` and sends the report to

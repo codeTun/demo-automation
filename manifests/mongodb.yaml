@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+spec:
+  replicas: 1
+  # The old pod must release the data folder before the new one starts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        # The lab names mongo:3.6.5-jessie, which has no ARM64 version. This 3.6 tag has one.
+        image: mongo:3.6.23
+        # Keeps the memory cache of the database small, the worker nodes are small too.
+        args: ["--wiredTigerCacheSizeGB", "0.25"]
+        ports:
+        - containerPort: 27017
+        readinessProbe:
+          tcpSocket:
+            port: 27017
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: mongo-persistent-storage
+          mountPath: /data/db
+      volumes:
+      - name: mongo-persistent-storage
+        persistentVolumeClaim:
+          claimName: fleetman-mongo-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-mongodb
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - name: mongoport
+      port: 27017
+  type: ClusterIP
+---
+# What the database asks for.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fleetman-mongo-pvc
+spec:
+  storageClassName: fleetman-local
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Where the data really is: a folder on worker01.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: fleetman-mongo-pv
+spec:
+  storageClassName: fleetman-local
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/fleetman-mongodb
+    type: DirectoryOrCreate
+  # The folder exists on one node only, so the database pod must always run on that node.
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - worker01

@@ -73,7 +73,7 @@ pipeline {
                         sed -i "s|image: .*|image: $REGISTRY/fleetman-$service:$tag|" manifests/$service.yaml
                     done
                     kubectl apply -f manifests/
-                    for service in $SERVICES; do
+                    for service in mongodb $SERVICES; do
                         if ! kubectl rollout status deployment/$service --timeout=300s; then
                             # "timed out" does not say why: show what the pods that are not ready report.
                             echo "=== $service is not ready ==="
