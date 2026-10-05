@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         REGISTRY = "iheb770"
-        // Deployment order: the queue first, the web app last.
         SERVICES = "queue position-tracker api-gateway position-simulator webapp"
     }
 
@@ -11,9 +10,6 @@ pipeline {
         stage('Preparation') {
             steps {
                 checkout scm
-                // Each microservice gets its own image tag: the short hash of the last
-                // commit that changed its folder. A microservice that did not change
-                // keeps its tag, so it is not restarted for nothing.
                 sh '''
                     for service in $SERVICES; do
                         echo "$service -> $REGISTRY/fleetman-$service:$(git log -1 --format=%h -- $service)"
@@ -61,7 +57,16 @@ pipeline {
                     done
                     kubectl apply -f manifests/
                     for service in $SERVICES; do
-                        kubectl rollout status deployment/$service --timeout=300s
+                        if ! kubectl rollout status deployment/$service --timeout=300s; then
+                            # "timed out" does not say why: show what the pods that are not ready report.
+                            echo "=== $service is not ready ==="
+                            kubectl get pods -l app=$service -o wide
+                            for pod in $(kubectl get pods -l app=$service --no-headers | awk '{ split($2, ready, "/"); if (ready[1] != ready[2]) print $1 }'); do
+                                kubectl describe pod $pod | sed -n '/^Events:/,$p'
+                                kubectl logs $pod --tail=20 || true
+                            done
+                            exit 1
+                        fi
                     done
                 '''
             }

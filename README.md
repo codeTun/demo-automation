@@ -22,7 +22,7 @@ The `Jenkinsfile` runs five stages:
 2. **Image Build**: builds the five Docker images. Java and Angular are compiled inside
    Docker, so Jenkins needs neither Maven nor Node.
 3. **Image Push**: publishes the images on Docker Hub.
-4. **Deploy**: applies the manifests and waits until every Deployment is ready.
+4. **Deploy**: applies the manifests and waits until every Deployment is ready. If one is not, the log shows the state, the events and the last log lines of its pods.
 5. **Smoke Test**: calls the API gateway and the web interface to check that the
    application really answers.
 
