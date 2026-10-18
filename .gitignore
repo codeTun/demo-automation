@@ -3,3 +3,4 @@ dist/
 .angular/
 target/
 .DS_Store
+monitoring/server/kubernetes/

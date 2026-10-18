@@ -1,0 +1,65 @@
+# Prometheus of the monitoring VM. It finds the nodes through the Kubernetes API of the
+# master, with the read-only token copied into kubernetes/ (see monitoring/README.md).
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          cluster: fleetman
+
+  # Machine metrics: node-exporter on port 9100 of every node.
+  - job_name: node-exporter
+    kubernetes_sd_configs:
+      - role: node
+        api_server: https://192.168.38.136:6443
+        authorization:
+          credentials_file: /etc/prometheus/kubernetes/token
+        tls_config:
+          ca_file: /etc/prometheus/kubernetes/ca.crt
+    relabel_configs:
+      # The API gives the kubelet address (node-ip:10250); node-exporter listens on 9100.
+      - source_labels: [__address__]
+        regex: '(.+):10250'
+        replacement: '${1}:9100'
+        target_label: __address__
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+      - target_label: cluster
+        replacement: fleetman
+
+  # Container metrics: the cAdvisor built into the kubelet of every node.
+  - job_name: kubelet-cadvisor
+    scheme: https
+    metrics_path: /metrics/cadvisor
+    authorization:
+      credentials_file: /etc/prometheus/kubernetes/token
+    tls_config:
+      # The kubelets of a kubeadm cluster use self-signed certificates.
+      insecure_skip_verify: true
+    kubernetes_sd_configs:
+      - role: node
+        api_server: https://192.168.38.136:6443
+        authorization:
+          credentials_file: /etc/prometheus/kubernetes/token
+        tls_config:
+          ca_file: /etc/prometheus/kubernetes/ca.crt
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+      - target_label: cluster
+        replacement: fleetman
+
+  # State of the Kubernetes objects: kube-state-metrics, reached through its NodePort.
+  - job_name: kube-state-metrics
+    static_configs:
+      - targets: ['192.168.38.136:30900']
+        labels:
+          cluster: fleetman

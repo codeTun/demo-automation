@@ -36,6 +36,17 @@ The `Jenkinsfile` runs six stages:
 An image is tagged with the short hash of the last commit that changed the folder of its
 microservice. A microservice that did not change keeps its tag and is not restarted.
 
+## Monitoring
+
+Prometheus and Grafana run on a separate VM and watch the three nodes and every container.
+The pipeline does not deploy them. Setup and files: [monitoring/README.md](monitoring/README.md).
+
+## Monitoring
+
+Prometheus and Grafana run on a separate VM and watch the cluster from outside. The
+exporters deployed on the cluster, the configuration of the VM and the setup steps are in
+[`monitoring/`](monitoring/README.md). The pipeline does not deploy them.
+
 ## Origin of the application
 
 The source code of the microservices comes from Richard Chesterwood's Kubernetes course,
